@@ -6,26 +6,26 @@
          "lib.rkt"
          (for-syntax syntax/parse))
 
-(define+provide fl*  (#js.Core.attachProcedureArity (if-scheme-numbers #js.Core.Number.Scheme.multiply
+(define+provide fl*  (#js.Core.attachProcedureArity (if-scheme-numbers #js.Core.Number.Racket.multiply
                                                                        #js.Core.Number.JS.mul ) 0))
-(define+provide fl/  (#js.Core.attachProcedureArity (if-scheme-numbers #js.Core.Number.Scheme.divide
+(define+provide fl/  (#js.Core.attachProcedureArity (if-scheme-numbers #js.Core.Number.Racket.divide
                                                                        #js.Core.Number.JS.div ) 1))
-(define+provide fl+  (#js.Core.attachProcedureArity (if-scheme-numbers #js.Core.Number.Scheme.add
+(define+provide fl+  (#js.Core.attachProcedureArity (if-scheme-numbers #js.Core.Number.Racket.add
                                                                        #js.Core.Number.JS.add ) 0))
-(define+provide fl-  (#js.Core.attachProcedureArity (if-scheme-numbers #js.Core.Number.Scheme.subtract
+(define+provide fl-  (#js.Core.attachProcedureArity (if-scheme-numbers #js.Core.Number.Racket.subtract
                                                                        #js.Core.Number.JS.sub ) 1))
-(define+provide fl<  (#js.Core.attachProcedureArity (if-scheme-numbers #js.Core.Number.Scheme.lessThan
+(define+provide fl<  (#js.Core.attachProcedureArity (if-scheme-numbers #js.Core.Number.Racket.lessThan
                                                                        #js.Core.Number.JS.lt ) 1))
-(define+provide fl>  (#js.Core.attachProcedureArity (if-scheme-numbers #js.Core.Number.Scheme.greaterThan
+(define+provide fl>  (#js.Core.attachProcedureArity (if-scheme-numbers #js.Core.Number.Racket.greaterThan
                                                                        #js.Core.Number.JS.gt ) 1))
-(define+provide fl<= (#js.Core.attachProcedureArity (if-scheme-numbers #js.Core.Number.Scheme.lessThanOrEqual
+(define+provide fl<= (#js.Core.attachProcedureArity (if-scheme-numbers #js.Core.Number.Racket.lessThanOrEqual
                                                                        #js.Core.Number.JS.lte ) 1))
-(define+provide fl>= (#js.Core.attachProcedureArity (if-scheme-numbers #js.Core.Number.Scheme.greaterThanOrEqual
+(define+provide fl>= (#js.Core.attachProcedureArity (if-scheme-numbers #js.Core.Number.Racket.greaterThanOrEqual
                                                                        #js.Core.Number.JS.gte ) 1))
-(define+provide fl=  (#js.Core.attachProcedureArity (if-scheme-numbers #js.Core.Number.Scheme.approxEquals
+(define+provide fl=  (#js.Core.attachProcedureArity (if-scheme-numbers #js.Core.Number.Racket.approxEquals
                                                                        #js.Core.Number.JS.equals ) 1))
 
-(define+provide flabs (if-scheme-numbers #js.Core.Number.Scheme.abs
+(define+provide flabs (if-scheme-numbers #js.Core.Number.Racket.abs
                                          #js.Math.abs))
 (define+provide flmin (if-scheme-numbers min
                                          #js.Math.min))

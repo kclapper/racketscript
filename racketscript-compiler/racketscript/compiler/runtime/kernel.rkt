@@ -51,11 +51,11 @@
 ;; ----------------------------------------------------------------------------
 ;; Numbers
 
-(define+provide number?   (if-scheme-numbers #js.Core.Number.Scheme.isSchemeNumber
+(define+provide number?   (if-scheme-numbers #js.Core.Number.Racket.isSchemeNumber
                                              #js.Core.Number.JS.check))
-(define+provide real?     (if-scheme-numbers #js.Core.Number.Scheme.isReal
+(define+provide real?     (if-scheme-numbers #js.Core.Number.Racket.isReal
                                              #js.Core.Number.JS.check))
-(define+provide integer?  (if-scheme-numbers #js.Core.Number.Scheme.isInteger
+(define+provide integer?  (if-scheme-numbers #js.Core.Number.Racket.isInteger
                                              #js.Number.isInteger))
 
 (define-syntax (define+provide/scheme-numbers stx)
@@ -80,31 +80,31 @@
 (define+provide/scheme-numbers complex? number?)
 
 (define-checked+provide (zero? [v number?])
-  (if-scheme-numbers (#js.Core.Number.Scheme.equals #js.Core.Number.Scheme.zero v)
+  (if-scheme-numbers (#js.Core.Number.Racket.equals #js.Core.Number.Racket.zero v)
                      (binop === v 0)))
 
 (define-checked+provide (positive? [v real?])
-  (if-scheme-numbers (#js.Core.Number.Scheme.greaterThan v #js.Core.Number.Scheme.zero)
+  (if-scheme-numbers (#js.Core.Number.Racket.greaterThan v #js.Core.Number.Racket.zero)
                      (binop > v 0)))
 
 (define-checked+provide (negative? [v real?])
-  (if-scheme-numbers (#js.Core.Number.Scheme.lessThan v #js.Core.Number.Scheme.zero)
+  (if-scheme-numbers (#js.Core.Number.Racket.lessThan v #js.Core.Number.Racket.zero)
                      (binop < v 0)))
 
 (define-checked+provide (add1 [v number?])
-  (if-scheme-numbers (#js.Core.Number.Scheme.add v #js.Core.Number.Scheme.one)
+  (if-scheme-numbers (#js.Core.Number.Racket.add v #js.Core.Number.Racket.one)
                      (binop + v 1)))
 
 (define-checked+provide (sub1 [v number?])
-  (if-scheme-numbers (#js.Core.Number.Scheme.subtract v #js.Core.Number.Scheme.one)
+  (if-scheme-numbers (#js.Core.Number.Racket.subtract v #js.Core.Number.Racket.one)
                      (binop - v 1)))
 
 (define-checked+provide (quotient [dividend integer?] [divisor integer?])
-  (if-scheme-numbers (#js.Core.Number.Scheme.quotient dividend divisor)
+  (if-scheme-numbers (#js.Core.Number.Racket.quotient dividend divisor)
                      (binop \| (binop / dividend divisor) 0)))
 
 (define-checked+provide (even? [v integer?])
-  (if-scheme-numbers (#js.Core.Number.Scheme.equals (#js.Core.Number.Scheme.modulo v 2) 0)
+  (if-scheme-numbers (#js.Core.Number.Racket.equals (#js.Core.Number.Racket.modulo v 2) 0)
                      (binop === (binop % v 2) 0)))
 
 (define-checked+provide (odd? [v integer?])
@@ -112,7 +112,7 @@
 
 (define+provide (exact-nonnegative-integer? v)
   (if-scheme-numbers (and (integer? v)
-                          (#js.Core.Number.Scheme.greaterThanOrEqual v 0)
+                          (#js.Core.Number.Racket.greaterThanOrEqual v 0)
                           (exact? v))
                      (and (#js.Number.isInteger v) (binop >= v 0))))
 
@@ -122,7 +122,7 @@
                      (#js.Number.isInteger v)))
 
 (define+provide (exact? v)
-  (if-scheme-numbers (#js.Core.Number.Scheme.isExact v)
+  (if-scheme-numbers (#js.Core.Number.Racket.isExact v)
                      (#js.Number.isInteger v)))
 
 (define+provide (inexact? v) (not (exact? v)))
@@ -143,17 +143,17 @@
                                                         [(null? (cdr nums))
                                                          (car nums)]
                                                         [else
-                                                         (#js.Core.Number.Scheme.multiply (car nums) (apply * (cdr nums)))]))
+                                                         (#js.Core.Number.Racket.multiply (car nums) (apply * (cdr nums)))]))
                       0)
                      (#js.Core.attachProcedureArity #js.Core.Number.JS.mul 0)))
 (define+provide /
   (if-scheme-numbers (#js.Core.attachProcedureArity (λ nums
                                                       (cond
                                                         [(null? (cdr nums))
-                                                         (#js.Core.Number.Scheme.divide 1 (car nums))]
+                                                         (#js.Core.Number.Racket.divide 1 (car nums))]
                                                         [else
                                                          (foldl (λ (x y)
-                                                                  (#js.Core.Number.Scheme.divide y x))
+                                                                  (#js.Core.Number.Racket.divide y x))
                                                                 (car nums)
                                                                 (cdr nums))]))
                       1)
@@ -166,17 +166,17 @@
                                                         [(null? (cdr nums))
                                                          (car nums)]
                                                         [else
-                                                         (#js.Core.Number.Scheme.add (car nums) (apply + (cdr nums)))]))
+                                                         (#js.Core.Number.Racket.add (car nums) (apply + (cdr nums)))]))
                       0)
                      (#js.Core.attachProcedureArity #js.Core.Number.JS.add 0)))
 (define+provide -
   (if-scheme-numbers (#js.Core.attachProcedureArity (λ nums
                                                       (cond
                                                         [(null? (cdr nums))
-                                                         (#js.Core.Number.Scheme.subtract 0 (car nums))]
+                                                         (#js.Core.Number.Racket.subtract 0 (car nums))]
                                                         [else
                                                          (foldl (λ (n acc)
-                                                                  (#js.Core.Number.Scheme.subtract acc n))
+                                                                  (#js.Core.Number.Racket.subtract acc n))
                                                                 (car nums)
                                                                 (cdr nums))]))
                       1)
@@ -194,92 +194,92 @@
             (apply op (cdr nums)))])))
 
 (define+provide <
-  (if-scheme-numbers (#js.Core.attachProcedureArity (make-js-comparison < #js.Core.Number.Scheme.lessThan) 1)
+  (if-scheme-numbers (#js.Core.attachProcedureArity (make-js-comparison < #js.Core.Number.Racket.lessThan) 1)
                      (#js.Core.attachProcedureArity #js.Core.Number.JS.lt 1)))
 (define+provide >
-  (if-scheme-numbers (#js.Core.attachProcedureArity (make-js-comparison > #js.Core.Number.Scheme.greaterThan) 1)
+  (if-scheme-numbers (#js.Core.attachProcedureArity (make-js-comparison > #js.Core.Number.Racket.greaterThan) 1)
                      (#js.Core.attachProcedureArity #js.Core.Number.JS.gt 1)))
 (define+provide <=
-  (if-scheme-numbers (#js.Core.attachProcedureArity (make-js-comparison <= #js.Core.Number.Scheme.lessThanOrEqual) 1)
+  (if-scheme-numbers (#js.Core.attachProcedureArity (make-js-comparison <= #js.Core.Number.Racket.lessThanOrEqual) 1)
                      (#js.Core.attachProcedureArity #js.Core.Number.JS.lte 1)))
 (define+provide >=
-  (if-scheme-numbers (#js.Core.attachProcedureArity (make-js-comparison >= #js.Core.Number.Scheme.greaterThanOrEqual) 1)
+  (if-scheme-numbers (#js.Core.attachProcedureArity (make-js-comparison >= #js.Core.Number.Racket.greaterThanOrEqual) 1)
                      (#js.Core.attachProcedureArity #js.Core.Number.JS.gte 1)))
 (define+provide =
-  (if-scheme-numbers (#js.Core.attachProcedureArity (make-js-comparison = #js.Core.Number.Scheme.equals) 1)
+  (if-scheme-numbers (#js.Core.attachProcedureArity (make-js-comparison = #js.Core.Number.Racket.equals) 1)
                      (#js.Core.attachProcedureArity #js.Core.Number.JS.equals 1)))
 
 (define-checked+provide (floor [v real?])
-  (if-scheme-numbers (#js.Core.Number.Scheme.floor v)
+  (if-scheme-numbers (#js.Core.Number.Racket.floor v)
                      (#js.Math.floor v)))
 (define-checked+provide (abs [v real?])
-  (if-scheme-numbers (#js.Core.Number.Scheme.abs v)
+  (if-scheme-numbers (#js.Core.Number.Racket.abs v)
                      (#js.Math.abs v)))
 (define-checked+provide (sin [v number?])
-  (if-scheme-numbers (#js.Core.Number.Scheme.sin v)
+  (if-scheme-numbers (#js.Core.Number.Racket.sin v)
                      (#js.Math.sin v)))
 (define-checked+provide (cos [v number?])
-  (if-scheme-numbers (#js.Core.Number.Scheme.cos v)
+  (if-scheme-numbers (#js.Core.Number.Racket.cos v)
                      (#js.Math.cos v)))
 (define-checked+provide (tan [v number?])
-  (if-scheme-numbers (#js.Core.Number.Scheme.tan v)
+  (if-scheme-numbers (#js.Core.Number.Racket.tan v)
                      (#js.Math.tan v)))
 (define-checked+provide (asin [v number?])
-  (if-scheme-numbers (#js.Core.Number.Scheme.asin v)
+  (if-scheme-numbers (#js.Core.Number.Racket.asin v)
                      (#js.Math.asin v)))
 (define-checked+provide (acos [v number?])
-  (if-scheme-numbers (#js.Core.Number.Scheme.acos v)
+  (if-scheme-numbers (#js.Core.Number.Racket.acos v)
                      (#js.Math.acos v)))
 (define+provide atan
   (if-scheme-numbers (case-lambda
-                       [(x) (#js.Core.Number.Scheme.atan x)]
-                       [(x y) (#js.Core.Number.Scheme.atan2 x y)])
+                       [(x) (#js.Core.Number.Racket.atan x)]
+                       [(x y) (#js.Core.Number.Racket.atan2 x y)])
                      (case-lambda
                        [(v) (#js.Math.atan v)]
                        [(x y) (#js.Math.atan2 x y)])))
 
 (define-checked+provide (ceiling [v real?])
-  (if-scheme-numbers (#js.Core.Number.Scheme.ceiling v)
+  (if-scheme-numbers (#js.Core.Number.Racket.ceiling v)
                      (#js.Math.ceil v)))
 (define-checked+provide (round [v real?])
-  (if-scheme-numbers (#js.Core.Number.Scheme.round v)
+  (if-scheme-numbers (#js.Core.Number.Racket.round v)
                      (#js.Math.round v)))
 
 (define-checked+provide (min [a real?] [b real?])
   (if-scheme-numbers (cond
                        [(not (and (number? a)
                                   (number? b)))
-                        #js.Core.Number.Scheme.nan]
-                       [(#js.Core.Number.Scheme.lessThan a b) a]
+                        #js.Core.Number.Racket.nan]
+                       [(#js.Core.Number.Racket.lessThan a b) a]
                        [else b])
                      (#js.Math.min a b)))
 (define-checked+provide (max [a real?] [b real?])
   (if-scheme-numbers (cond
                        [(not (and (number? a)
                                   (number? b)))
-                        #js.Core.Number.Scheme.nan]
-                       [(#js.Core.Number.Scheme.greaterThan a b) a]
+                        #js.Core.Number.Racket.nan]
+                       [(#js.Core.Number.Racket.greaterThan a b) a]
                        [else b])
                      (#js.Math.max a b)))
 
 (define-checked+provide (log [v number?])
-  (if-scheme-numbers (#js.Core.Number.Scheme.log v)
+  (if-scheme-numbers (#js.Core.Number.Racket.log v)
                      (#js.Math.log v)))
 
 (define-checked+provide (exp [w number?])
-  (if-scheme-numbers (#js.Core.Number.Scheme.exp w)
+  (if-scheme-numbers (#js.Core.Number.Racket.exp w)
                      (#js.Math.exp w)))
 
 (define-checked+provide (expt [w number?] [z number?])
-  (if-scheme-numbers (#js.Core.Number.Scheme.expt w z)
+  (if-scheme-numbers (#js.Core.Number.Racket.expt w z)
                      (#js.Math.pow w z)))
 
 (define-checked+provide (sqrt [v number?])
-  (if-scheme-numbers (#js.Core.Number.Scheme.sqrt v)
+  (if-scheme-numbers (#js.Core.Number.Racket.sqrt v)
                      (#js.Math.sqrt v)))
 
 (define-checked+provide (sqr [v number?])
-  (if-scheme-numbers (#js.Core.Number.Scheme.sqr v)
+  (if-scheme-numbers (#js.Core.Number.Racket.sqr v)
                      (* v v)))
 
 (define-checked+provide (truncate [v number?])
@@ -290,7 +290,7 @@
                      (#js.Math.trunc v)))
 
 (define-checked+provide (remainder [a integer?] [b integer?])
-  (if-scheme-numbers (#js.Core.Number.Scheme.remainder a b)
+  (if-scheme-numbers (#js.Core.Number.Racket.remainder a b)
                      (binop % a b)))
 
 (define-checked+provide (number->string [n number?])
@@ -298,56 +298,56 @@
 
 ;; TODO: only works for numbers < 32 bits
 (define-checked+provide (arithmetic-shift [n integer?] [m integer?])
-  (if-scheme-numbers (#js.Core.Number.Scheme.arithmeticShift n m)
+  (if-scheme-numbers (#js.Core.Number.Racket.arithmeticShift n m)
                      (if (negative? m)
                          (binop >> n (- m))
                          (binop << n m))))
 
 ;;TODO: Support bignums
-(define+provide (inexact->exact v) (if-scheme-numbers (#js.Core.Number.Scheme.toExact v)
+(define+provide (inexact->exact v) (if-scheme-numbers (#js.Core.Number.Racket.toExact v)
                                                       v))
-(define+provide (exact->inexact v) (if-scheme-numbers (#js.Core.Number.Scheme.toInexact v)
+(define+provide (exact->inexact v) (if-scheme-numbers (#js.Core.Number.Racket.toInexact v)
                                                       v))
 
 ;; complex Numbers
 (define-checked+provide (make-rectangular [x real?] [y real?])
-  (if-scheme-numbers (#js.Core.Number.Scheme.makeComplex x y)
+  (if-scheme-numbers (#js.Core.Number.Racket.makeRectangular x y)
                      (#js.Core.Pair.make x y)))
 
 
 (define-checked+provide (make-polar [m real?] [a real?])
-  (if-scheme-numbers (#js.Core.Number.Scheme.makeComplexPolar m a)
+  (if-scheme-numbers (#js.Core.Number.Racket.makePolar m a)
                      (error "Complex numbers not supported with JS numerber semantics")))
 
 (define-checked+provide (real-part [z (if-scheme-numbers number? pair?)])
-                    (if-scheme-numbers (#js.Core.Number.Scheme.realPart z)
+                    (if-scheme-numbers (#js.Core.Number.Racket.realPart z)
                                        (#js.z.hd z)))
 (define-checked+provide (imag-part [z (if-scheme-numbers number? pair?)])
-                     (if-scheme-numbers (#js.Core.Number.Scheme.imaginaryPart z)
+                     (if-scheme-numbers (#js.Core.Number.Racket.imaginaryPart z)
                                         (#js.z.tl z)))
 (define-checked+provide/scheme-numbers (magnitude [x number?])
-  (#js.Core.Number.Scheme.magnitude x))
+  (#js.Core.Number.Racket.magnitude x))
 
 (define-checked+provide/scheme-numbers (conjugate [x number?])
-  (#js.Core.Number.Scheme.conjugate x))
+  (#js.Core.Number.Racket.conjugate x))
 
 (define-checked+provide/scheme-numbers (angle [x number?])
-  (#js.Core.Number.Scheme.angle x))
+  (#js.Core.Number.Racket.angle x))
 
-(define+provide rational? (if-scheme-numbers #js.Core.Number.Scheme.isRational
+(define+provide rational? (if-scheme-numbers #js.Core.Number.Racket.isRational
                                              #js.Number.isInteger))
 (define-checked+provide (numerator [x number?])
-  (if-scheme-numbers (#js.Core.Number.Scheme.numerator x)
+  (if-scheme-numbers (#js.Core.Number.Racket.numerator x)
                      x))
 (define-checked+provide (denominator [x number?])
-  (if-scheme-numbers (#js.Core.Number.Scheme.denominator x)
+  (if-scheme-numbers (#js.Core.Number.Racket.denominator x)
                      1))
 
 ;; bitwise operators
 
 (define+provide bitwise-and
   (if-scheme-numbers (#js.Core.attachProcedureName
-                      (#js.Core.attachProcedureArity #js.Core.Number.Scheme.bitwiseAnd 1)
+                      (#js.Core.attachProcedureArity #js.Core.Number.Racket.bitwiseAnd 1)
                       "bitwise-and")
                      (#js.Core.attachProcedureName
                       (#js.Core.attachProcedureArity #js.Core.Number.JS.bitwiseAnd 1)
@@ -355,7 +355,7 @@
 
 (define+provide bitwise-ior
   (if-scheme-numbers (#js.Core.attachProcedureName
-                      (#js.Core.attachProcedureArity #js.Core.Number.Scheme.bitwiseOr 1)
+                      (#js.Core.attachProcedureArity #js.Core.Number.Racket.bitwiseOr 1)
                       "bitwise-ior")
                      (#js.Core.attachProcedureName
                       (#js.Core.attachProcedureArity #js.Core.Number.JS.bitwiseOr 1)
@@ -363,14 +363,14 @@
 
 (define+provide bitwise-xor
   (if-scheme-numbers (#js.Core.attachProcedureName
-                      (#js.Core.attachProcedureArity #js.Core.Number.Scheme.bitwiseXor 1)
+                      (#js.Core.attachProcedureArity #js.Core.Number.Racket.bitwiseXor 1)
                       "bitwise-xor")
                      (#js.Core.attachProcedureName
                       (#js.Core.attachProcedureArity #js.Core.Number.JS.bitwiseXor 1)
                       "bitwise-xor")))
 
 (define-checked+provide (bitwise-not [v number?])
-  (if-scheme-numbers (#js.Core.Number.Scheme.bitwiseNot v)
+  (if-scheme-numbers (#js.Core.Number.Racket.bitwiseNot v)
                      (#js.Core.Number.JS.bitwiseNot v)))
 
 (define+provide (bitwise-bit-set? n m)
@@ -1042,7 +1042,7 @@
           result)))
 
   (if-scheme-numbers
-   (let ([scheme-number (#js.Core.Number.Scheme.fromString s)])
+   (let ([scheme-number (#js.Core.Number.Racket.fromString s)])
      (if (and scheme-number
               (= radix 10))
          scheme-number

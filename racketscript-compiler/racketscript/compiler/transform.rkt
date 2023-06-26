@@ -633,7 +633,7 @@
     [(and (complex? d)
           (not (real? d)))
      (if (use-scheme-numbers?)
-         (ILApp (name-in-module 'core 'Number.Scheme.makeComplex)
+         (ILApp (name-in-module 'core 'Number.Racket.makeComplex)
                 (list (absyn-value->il (real-part d))
                       (absyn-value->il (imag-part d))))
          (error (~a "Complex numbers not supported with JS number semantics: " d)))]
@@ -688,7 +688,7 @@
      (ILValue d)]
     [(real? d)
      (if (use-scheme-numbers?)
-         (ILApp (name-in-module 'core 'Number.Scheme.makeFloat)
+         (ILApp (name-in-module 'core 'Number.Racket.makeFloat)
                 (list (ILValue d)))
          (ILValue d))]
     [else (error (~a "unsupported value" d))]))

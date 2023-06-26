@@ -1,7 +1,7 @@
-import * as Scheme from './scheme-numbers.js';
-import * as JS from './js-numbers.js';
+import * as Racket from './racket-semantics.cjs';
+import * as JS from './js-semantics.js';
 
 export {
-    Scheme,
+    Racket,
     JS
 };
