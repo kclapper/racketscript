@@ -5,7 +5,7 @@ import * as Bytes from './bytes.js';
 import {
     isRacketNumber,
     equals as racketNumberEquals
-} from './numbers/racket-semantics.cjs';
+} from 'tower.js';
 
 /**
  * @param {*} v1

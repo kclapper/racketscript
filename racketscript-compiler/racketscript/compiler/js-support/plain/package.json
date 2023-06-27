@@ -1,5 +1,8 @@
 {
     "name": "racketscript",
     "version": "0.0.1",
-    "type": "module"
+    "type": "module",
+    "dependencies": {
+        "tower.js": "^0.3.0"
+    }
 }

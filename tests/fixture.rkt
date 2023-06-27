@@ -167,8 +167,7 @@
 ;; 2. Always skip-npm-install to save time
 ;; [3. Always remove old compiled module outputs)]
 (define (setup)
-  (skip-npm-install #t)
-
+  (skip-npm-install #f)
   (when (clean-output-before-test)
     (delete-directory/files (output-directory))))
 
