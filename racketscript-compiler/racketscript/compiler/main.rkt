@@ -275,10 +275,9 @@
       next))
 
   (dump-module-timestamps! timestamps)
-
-  (log-rjs-info "Running NPM [Install/Build].")
-  (npm-install-build)
-
+  (unless (equal? (js-target) "plain")
+    (log-rjs-info "Running NPM [Install/Build].")
+    (npm-install-build))
   (log-rjs-info "Finished.")
 
   compiled-modules)

@@ -3,8 +3,7 @@
     "version": "0.0.1",
     "type": "module",
     "dependencies": {
-        "util": "*",
-        "tower.js": "^0.5.0"
+        "util": "*"
     },
     "devDependencies": {
         "webpack": "^5.38.1",
