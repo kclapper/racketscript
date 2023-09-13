@@ -39,7 +39,8 @@
   [ObjectPair      (Pairof ObjectKey ILExpr)]
 
   #:forms
-  [ILExpr   (ILLambda      [args      : ILFormals]
+  [ILExpr   ILValue
+            (ILLambda      [args      : ILFormals]
                            [body      : ILStatement*])
             (ILBinaryOp    [operator  : Symbol]
                            [args      : (Listof ILExpr)])
@@ -51,18 +52,20 @@
                            [fieldname : Symbol])
             (ILIndex       [expr      : ILExpr]
                            [fieldexpr : ILExpr])
-            (ILValue       [v         : Any])
             (ILNew         [v         : (U ILLValue ILApp)])
             (ILInstanceOf  [expr      : ILExpr]
                            [type      : ILExpr])
-            (ILTypeOf      [expr      : ILExpr])
+            (ILTypeOf      [expr      : ILExpr])]
 
-            ;; Should be ideally in values
-            (ILNull)
-            (ILUndefined)
-            (ILArguments)
-            (ILThis)
-            Symbol]
+  [ILValue (ILString [v : String])
+           (ILBool [v : Boolean])
+           (ILNull)
+           (ILUndefined)
+           (ILArguments)
+           (ILThis)
+           Symbol
+           (ILNumber [v : Float])
+           (ILBigInt [v : Integer])]
 
   [ILStatement   ILExpr
                  (ILVarDec      [id         : Symbol]

@@ -30,10 +30,10 @@
 (define (check-arity-stms formals)
   (: check-arity-stm (-> Symbol Natural ILIf))
   (define (check-arity-stm op arity)
-    (ILIf (ILBinaryOp op (list (ILRef (ILArguments) 'length) (ILValue arity)))
+    (ILIf (ILBinaryOp op (list (ILRef (ILArguments) 'length) (ILNumber (exact->inexact arity))))
           (list
            (ILThrow (ILApp (name-in-module 'core 'racketContractError)
-                           (list (ILValue "arity mismatch")))))
+                           (list (ILString "arity mismatch")))))
           '()))
 
   (define formals* (ILCheckedFormals-formals formals))
@@ -202,7 +202,10 @@
        (ILTypeOf (handle-expr expr))]
       [(ILNew v)
        (ILNew (cast (handle-expr v) (U Symbol ILRef ILIndex ILApp)))]
-      [(ILValue v) e]
+      [(ILNumber v) e]
+      [(ILBigInt v) e]
+      [(ILString v) e]
+      [(ILBool v) e]
       [(ILUndefined) e]
       [(ILArguments) e]
       [(ILThis) e]
@@ -371,7 +374,7 @@
          (list
           (ILVarDec
            'if_res2
-           (ILBinaryOp '+ (list (ILValue 1)
+           (ILBinaryOp '+ (list (ILNumber 1.0)
                                 (ILApp 'fact '(a3)))))
           (ILVarDec 'foo 'a3))
          (list
@@ -392,7 +395,7 @@
         (list
          (ILVarDec
           'if_res2
-          (ILBinaryOp '+ (list (ILValue 1) (ILApp 'fact '(a3)))))
+          (ILBinaryOp '+ (list (ILNumber 1.0) (ILApp 'fact '(a3)))))
          (ILVarDec 'foo 'a3))
         (list
          (ILReturn
@@ -419,7 +422,7 @@
          (list
           (ILVarDec
            'if_res2
-           (ILBinaryOp '+ (list (ILValue 1)
+           (ILBinaryOp '+ (list (ILNumber 1.0)
                                 (ILApp 'fact '(a3)))))
           (ILVarDec 'foo 'a3)))
         (ILReturn 'if_res2))))))
@@ -439,7 +442,7 @@
         (list
          (ILVarDec
           'if_res2
-          (ILBinaryOp '+ (list (ILValue 1)
+          (ILBinaryOp '+ (list (ILNumber 1.0)
                                (ILApp 'fact '(a3)))))
          (ILVarDec 'foo 'a3)))
        (ILReturn 'if_res2)))))
@@ -451,17 +454,17 @@
      (ILLambda
       '()
       (list
-       (ILVarDec 'a (ILValue 0))
-       (ILAssign 'a (ILValue 1))
-       (ILVarDec 'b (ILValue 2))
+       (ILVarDec 'a (ILNumber 0.0))
+       (ILAssign 'a (ILNumber 1.0))
+       (ILVarDec 'b (ILNumber 2.0))
        (ILReturn 'a)))))
    (list
     (ILLambda
      '()
      (list
-      (ILVarDec 'a (ILValue 0))
-      (ILAssign 'a (ILValue 1))
-      (ILVarDec 'b (ILValue 2))
+      (ILVarDec 'a (ILNumber 0.0))
+      (ILAssign 'a (ILNumber 1.0))
+      (ILVarDec 'b (ILNumber 2.0))
       (ILReturn 'a))))
    "Can't lift return statements.")
 
@@ -471,15 +474,15 @@
      (ILLambda
       '()
       (list
-       (ILVarDec 'a (ILValue 0))
-       (ILAssign 'a (ILValue 1))
+       (ILVarDec 'a (ILNumber 0.0))
+       (ILAssign 'a (ILNumber 1.0))
        (ILReturn 'a)))))
    (list
     (ILLambda
      '()
      (list
-      (ILVarDec 'a (ILValue 0))
-      (ILReturn (ILValue 1))
+      (ILVarDec 'a (ILNumber 0.0))
+      (ILReturn (ILNumber 1.0))
       (ILReturn 'a))))
    "Lift last return statement.")
 
@@ -504,10 +507,10 @@
              (list
               (ILIf 'predicate2
                     (list (ILVarDec 'result (ILApp 'foo '())))
-                    (list (ILVarDec 'result (ILValue 0))))
+                    (list (ILVarDec 'result (ILNumber 0.0))))
               (ILReturn 'result))
              (list
-              (ILReturn (ILValue 0))))))))
+              (ILReturn (ILNumber 0.0))))))))
    (list
     (ILLambda
      '()
@@ -515,8 +518,8 @@
       (ILIf 'predicate
             (list (ILIf 'predicate2
                         (list (ILReturn (ILApp 'foo '())))
-                        (list (ILReturn (ILValue 0)))))
-            (list (ILReturn (ILValue 0)))))))
+                        (list (ILReturn (ILNumber 0.0)))))
+            (list (ILReturn (ILNumber 0.0)))))))
    "Lift returns at deeper nesting")
 
   (check-equal?
@@ -524,31 +527,31 @@
     (list
      (ILLambda '()
                (list
-                (ILVarDec 'a (ILValue 0))
+                (ILVarDec 'a (ILNumber 0.0))
                 (ILVarDec 'b 'a)
                 (ILVarDec 'c 'b)
                 (ILVarDec 'd 'c)
                 (ILReturn 'd)))))
    (list
     (ILLambda '()
-              (list (ILReturn (ILValue 0)))))
+              (list (ILReturn (ILNumber 0.0)))))
    "Lift return multiple times")
 
   (check-equal?
    (lift-returns
     (list (ILLambda '()
                     (list
-                     (ILLetDec 'a (ILValue 0))
-                     (ILIf (ILValue #t)
-                           (list (ILLetDec 'a (ILValue 1)))
-                           (list (ILLetDec 'a (ILValue 2))))
+                     (ILLetDec 'a (ILNumber 0.0))
+                     (ILIf (ILBool #t)
+                           (list (ILLetDec 'a (ILNumber 1.0)))
+                           (list (ILLetDec 'a (ILNumber 2.0))))
                      (ILReturn 'a)))))
     (list (ILLambda '()
                     (list
-                     (ILLetDec 'a (ILValue 0))
-                     (ILIf (ILValue #t)
-                           (list (ILLetDec 'a (ILValue 1)))
-                           (list (ILLetDec 'a (ILValue 2))))
+                     (ILLetDec 'a (ILNumber 0.0))
+                     (ILIf (ILBool #t)
+                           (list (ILLetDec 'a (ILNumber 1.0)))
+                           (list (ILLetDec 'a (ILNumber 2.0))))
                      (ILReturn 'a))))
     "Differntiate between let declaration used in different scope")
 
@@ -557,7 +560,7 @@
    (lift-returns
     (list (ILLambda '()
                     (list
-                     (ILLetDec 'a (ILValue 0))
+                     (ILLetDec 'a (ILNumber 0.0))
                      (ILIf (ILValue #t)
                            (list (ILLetDec 'a (ILValue 1))
                                  (ILReturn 'a))
@@ -565,7 +568,7 @@
                                  (ILReturn 'a)))))))
    (list (ILLambda '()
                     (list
-                     (ILLetDec 'a (ILValue 0))
+                     (ILLetDec 'a (ILNumber 0.0))
                      (ILIf (ILValue #t)
                            (list (ILReturn (ILValue 1)))
                            (list (ILReturn (ILValue 2)))))))
@@ -575,14 +578,14 @@
    (lift-returns
     (list
      (ILIf* (list
-             (ILIfClause (ILValue 1) (list (ILVarDec 'return-val (ILValue 1))))
-             (ILIfClause (ILValue 2) (list (ILVarDec 'return-val (ILValue 2))))
-             (ILIfClause #f (list (ILVarDec 'return-val (ILValue #f))))))
+             (ILIfClause (ILNumber 1.0) (list (ILVarDec 'return-val (ILNumber 1.0))))
+             (ILIfClause (ILNumber 2.0) (list (ILVarDec 'return-val (ILNumber 2.0))))
+             (ILIfClause #f (list (ILVarDec 'return-val (ILBool #f))))))
      (ILReturn 'return-val)))
    (list
-    (ILIf* (list (ILIfClause (ILValue 1) (list (ILReturn (ILValue 1))))
-                 (ILIfClause (ILValue 2) (list (ILReturn (ILValue 2))))
-                 (ILIfClause #f (list (ILReturn (ILValue #f)))))))
+    (ILIf* (list (ILIfClause (ILNumber 1.0) (list (ILReturn (ILNumber 1.0))))
+                 (ILIfClause (ILNumber 2.0) (list (ILReturn (ILNumber 2.0))))
+                 (ILIfClause #f (list (ILReturn (ILBool #f)))))))
    "Lift return in if-else-if-else statements")]
 
 
@@ -642,7 +645,7 @@
                   ;; closure variable is mutated.
                   (reset-formals (lambda-formals) new-frmls))
                 (list (ILLabel (cast (lambda-start-label) Symbol))
-                      (ILWhile (ILValue #t)
+                      (ILWhile (ILBool #t)
                                (append reset-formals-decls s*)))])))
          (ILLambda (or (lambda-updated-formals) args)
                    body*))]
@@ -664,7 +667,10 @@
                      (handle-expr/general type))]
       [(ILTypeOf expr)
        (ILTypeOf (handle-expr/general expr))]
-      [(ILValue v) e]
+      [(ILNumber v) e]
+      [(ILBigInt v) e]
+      [(ILString v) e]
+      [(ILBool v) e]
       [(ILUndefined) e]
       [(ILArguments) e]
       [(ILThis) e]
@@ -773,7 +779,7 @@
       (list
        (ILLabel 'lambda-start1)
        (ILWhile
-        (ILValue #t)
+        (ILBool #t)
         (list
          (ILLetDec 'n '_n2)
          (ILLetDec 'a '_a3)
@@ -804,7 +810,7 @@
       (list
        (ILLabel 'lambda-start1)
        (ILWhile
-        (ILValue #t)
+        (ILBool #t)
         (list
          (ILLetDec 'n '_n2)
          (ILIf
@@ -891,15 +897,15 @@
        (match-define (list _ e-free) (find expr defs))
        (match-define (list _ f-free) (find fieldexpr defs))
        (list (set) (set-union e-free f-free))]
-      [(ILValue v) (list (set) (set))]
-      [(ILUndefined) (list (set) (set))]
-      [(ILNull) (list (set) (set))]
-      [(ILNew e) (find e defs)]
       [(? symbol? v)
        (list (set)
              (if (set-member? defs v)
                  (set)
-                 (set v)))]))
+                 (set v)))]
+      [(? ILValue? v) (list (set) (set))]
+      [(ILUndefined) (list (set) (set))]
+      [(ILNull) (list (set) (set))]
+      [(ILNew e) (find e defs)]))
 
   (let loop ([defs : IdentSet defs]
              [free : IdentSet (set)]
@@ -918,18 +924,18 @@
 
 (module+ test
   (check-equal? (free-identifiers (list
-                                   (ILVarDec 'a (ILValue 0))
+                                   (ILVarDec 'a (ILNumber 0.0))
                                    (ILReturn 'a)))
                 (set))
 
   (check-equal? (free-identifiers (list
-                                   (ILAssign 'a (ILValue 0))
+                                   (ILAssign 'a (ILNumber 0.0))
                                    (ILReturn 'a)))
                 (set 'a))
 
   (check-equal? (free-identifiers (list
-                                   (ILAssign 'a (ILValue 0))
-                                   (ILVarDec 'b (ILValue 0))
+                                   (ILAssign 'a (ILNumber 0.0))
+                                   (ILVarDec 'b (ILNumber 0.0))
                                    (ILReturn 'c)))
                 (set 'a 'c))
 
@@ -974,7 +980,14 @@
     [(ILRef expr _) (has-application? expr)]
     [(ILIndex expr fieldexpr) (or (has-application? expr)
                                   (has-application? fieldexpr))]
-    [(ILValue _) #f]
+    [(ILString _) #f]
+    [(ILBool _) #f]
+    [(ILNull) #f]
+    [(ILUndefined) #f]
+    [(ILArguments) #f]
+    [(ILThis) #f]
+    [(ILNumber _) #f]
+    [(ILBigInt _) #f]
     [(ILUndefined) #f]
     [(ILNull) #f]
     [(ILNew _) #t]
@@ -983,11 +996,11 @@
     [(ILTypeOf expr) (has-application? expr)]
     [(? symbol? e) #f]))
 (module+ test
-  (check-false (has-application? (ILValue 10)))
-  (check-false (has-application? (ILBinaryOp '+ (list (ILValue 10) (ILValue 12)))))
+  (check-false (has-application? (ILNumber 10.0)))
+  (check-false (has-application? (ILBinaryOp '+ (list (ILNumber 10.0) (ILNumber 12.0)))))
   (check-false (has-application? (ILLambda '() (list (ILApp 'foo '())))))
-  (check-true (has-application? (ILBinaryOp '+ (list (ILApp 'add1 (list (ILValue 10)))
-                                                     (ILValue 10))))))
+  (check-true (has-application? (ILBinaryOp '+ (list (ILApp 'add1 (list (ILNumber 10.0)))
+                                                     (ILNumber 10.0))))))
 
 ;;-----------------------------------------------------------------------------
 ;; Compute used and defined sets
@@ -1094,14 +1107,14 @@
      (match-define (list e-used _) (used+defined/statement expr))
      (match-define (list f-used _) (used+defined/statement fieldexpr))
      (list (set-union e-used f-used) (set))]
-    [(ILValue v) (list (set) (set))]
+    [(? symbol? v)
+     (list (set v) (set))]
+    [(? ILValue? v) (list (set) (set))]
     [(ILUndefined) (list (set) (set))]
     [(ILArguments) (list (set) (set))]
     [(ILThis) (list (set) (set))]
     [(ILNull) (list (set) (set))]
-    [(ILNew e) (used+defined/statement e)]
-    [(? symbol? v)
-     (list (set v) (set))]))
+    [(ILNew e) (used+defined/statement e)]))
 
 (: used+defined/statement* (-> ILStatement* Statement2UseDef))
 (define (used+defined/statement* stms)
@@ -1263,16 +1276,16 @@
 
 (module+ test
   (check-equal? (flatten-if-else
-                 (list (ILIf (ILValue 'pred1)
+                 (list (ILIf 'pred1
                              (list 't-branch-1)
                              (list
-                              (ILIf (ILValue 'pred2)
+                              (ILIf 'pred2
                                     (list 't-branch-2)
-                                    (list (ILIf (ILValue 'pred3)
+                                    (list (ILIf 'pred3
                                                 (list 't-branch-3)
                                                 (list 'done))))))))
                 (list (ILIf* (list
-                              (ILIfClause (ILValue 'pred1) (list 't-branch-1))
-                              (ILIfClause (ILValue 'pred2) (list 't-branch-2))
-                              (ILIfClause (ILValue 'pred3) (list 't-branch-3))
+                              (ILIfClause 'pred1 (list 't-branch-1))
+                              (ILIfClause 'pred2 (list 't-branch-2))
+                              (ILIfClause 'pred3 (list 't-branch-3))
                               (ILIfClause #f (list 'done)))))))

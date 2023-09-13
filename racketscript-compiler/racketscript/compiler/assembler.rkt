@@ -45,7 +45,9 @@
         (ILLambda? e)
         (ILBinaryOp? e)
         (ILObject? e)
-        (and (ILValue? e)
+        (ILNumber? e)
+        (ILBigInt? e)
+        #;(and (ILValue? e)
              (number? (ILValue-v e))
              (byte? (ILValue-v e)))))
 
@@ -125,17 +127,10 @@
      (emit "typeof(")
      (assemble-expr expr out)
      (emit ")")]
-    [(ILValue v) (assemble-value v out)]
-    [(ILNull)
-     (emit "null")]
-    [(ILUndefined)
-     (emit "undefined")]
-    [(ILArguments)
-     (emit "arguments")]
-    [(ILThis)
-     (emit "this")]
-    [_ #:when (symbol? expr)
-       (emit (~a (normalize-symbol expr)))]
+    [(? ILValue? expr)
+     (assemble-value expr out)]
+    ;[_ #:when (symbol? expr)
+       ;(emit (~a (normalize-symbol expr)))]
     [_ (error "unsupported expr" (void))]))
 
 (: assemble-statement* (-> ILStatement* Output-Port Void))
@@ -222,7 +217,7 @@
        (emit "}"))]
     [(ILLabel name)
      (emit "~a:" (normalize-symbol name))]
-    [(ILValue v) #:when (void? v) (void)] ;; ignore this NOP case
+    [(ILNull) (void)] ;; ignore this NOP case
     [_ #:when (ILExpr? stmt)
        ;; When we have a lambda expression as a statement, wrap it in
        ;; paranthesis. It's a JavaScript syntax ambiguity mentioned in
@@ -294,25 +289,45 @@
 
     (emit " };")))
 
-(: assemble-value (-> Any Output-Port Void))
-(define (assemble-value v out)
+(: assemble-value (-> ILValue Output-Port Void))
+(define (assemble-value value out)
   (define emit (curry fprintf out))
   ;; TODO: this will eventually be replaced by runtime primitives
-  (cond
-    [(string? v)
+  (match value
+    [(ILString v)
      (emit "~s" v)]
-    [(number? v)
+    [(ILBool v)
+     (emit (if v "true" "false"))]
+    [(ILNull)
+     (emit "null")]
+    [(ILUndefined)
+     (emit "undefined")]
+    [(ILArguments)
+     (emit "arguments")]
+    [(ILThis)
+     (emit "this")]
+    [(ILNumber v)
      (match v
        [+inf.0 (emit "Infinity")]
        [-inf.0 (emit "-Infinity")]
+       [+inf.f (emit "Infinity")]
+       [-inf.f (emit "-Infinity")]
        [+nan.0 (emit "NaN")]
+       [-nan.0 (emit "NaN")]
        [+nan.f  (emit "NaN")]
-       [_ #:when (single-flonum? v) (emit (~a (exact->inexact (inexact->exact v))))]
-       [_ (emit (~a v))])] ;; TODO
-    [(boolean? v) (emit (if v "true" "false"))]
-    [(void? v)
-     (emit "null")]
-    [else (error "Unexpected value: " v)]))
+       [-nan.f  (emit "NaN")]
+       [(? integer? v)
+        (emit (~a (inexact->exact v)))]
+       [else
+        (emit (~a v))]
+       ;[_ #:when (single-flonum? v) (emit (~a (exact->inexact (inexact->exact v))))]
+       ;[_ (emit (~a v))]
+       )] ;; TODO
+    [(ILBigInt v)
+     (emit "~an" v)]
+    [(? symbol? v)
+     (emit (~a (normalize-symbol v)))]
+    [else (error "Unexpected value: " value)]))
 
 [module+ test
   (require typed/rackunit
@@ -347,22 +362,27 @@
   ;;; Values ------------------------------------------------------------------
 
   ;; Numbers
-  (check-value 12 "12")
+  (check-value (ILNumber 12.0) "12")
+  (check-value (ILBigInt 12) "12n")
+  (check-value (ILNumber 12.5) "12.5")
+  (check-value (ILNumber -12.0) "-12")
+  (check-value (ILBigInt -12) "-12n")
+  (check-value (ILNumber -12.5) "-12.5")
 
   ;; Strings
-  (check-value "Hello World!" "\"Hello World!\"")
+  (check-value (ILString "Hello World!") "\"Hello World!\"")
 
   ;; Booleans
-  (check-value #t "true")
-  (check-value #f "false")
-  (check-value (void) "null")
+  (check-value (ILBool #t) "true")
+  (check-value (ILBool #f) "false")
+  (check-value (ILNull) "null")
 
   ;;; Expressions -------------------------------------------------------------
 
   ;; Values most should be covered above
-  (check-expr (ILValue "Hello World!")
+  (check-expr (ILString "Hello World!")
               (format "\"Hello World!\""))
-  (check-expr (ILValue 12) "12")
+  (check-expr (ILNumber 12.0) "12")
 
   ;; Lambda
   (check-expr (ILLambda '(x) (list 'x))
@@ -378,18 +398,18 @@
 
   ;; Application
   (check-expr (ILApp 'add (list 'a 'b)) "add(a,b)")
-  (check-expr (ILApp 'add (list (ILValue "foo") (ILValue "bar")))
+  (check-expr (ILApp 'add (list (ILString "foo") (ILString "bar")))
               "add(\"foo\",\"bar\")")
-  (check-expr (ILApp (ILLambda '(x) (list (ILReturn 'x))) (list (ILValue "Hello")))
+  (check-expr (ILApp (ILLambda '(x) (list (ILReturn 'x))) (list (ILString "Hello")))
               "(function(x) {return x;})(\"Hello\")")
 
   ;; Rest
   (check-expr 'foobar "foobar"  "assemble an identifier")
   (check-expr (ILIndex 'arr 'i) "arr[i]" "object indexing")
-  (check-expr (ILIndex 'arr (ILBinaryOp '+ (list 'i (ILValue 1))))
+  (check-expr (ILIndex 'arr (ILBinaryOp '+ (list 'i (ILNumber 1.0))))
               "arr[i+1]"
               "object indexing with expression")
-  (check-expr (ILIndex (ILIndex 'arr (ILBinaryOp '+ (list 'i (ILValue 1))))
+  (check-expr (ILIndex (ILIndex 'arr (ILBinaryOp '+ (list 'i (ILNumber 1.0))))
                        (ILBinaryOp '+ (list 'i 'j)))
               "arr[i+1][i+j]"
               "successive indexing")
@@ -409,7 +429,7 @@
   (check-expr (ILRef 'document 'write)
               "document.write"
               "object field ref")
-  (check-expr (ILRef (ILNew (ILApp 'Array (list (ILValue 10) (ILValue 0)))) 'property)
+  (check-expr (ILRef (ILNew (ILApp 'Array (list (ILNumber 10.0) (ILNumber 0.0)))) 'property)
               "(new Array(10,0)).property"
               "create object via expression and get a field with expression in paren")
   (check-expr (ILRef (ILRef (ILRef 'global 'window) 'document) 'write)
@@ -437,76 +457,76 @@
               "sort(a,lt).size")
   (check-expr (ILRef (ILLambda '(x) (list (ILReturn 'x))) 'valueOf)
               "(function(x) {return x;}).valueOf")
-  (check-expr (ILRef (ILValue 42) 'valueOf)
+  (check-expr (ILRef (ILNumber 42.0) 'valueOf)
               "(42).valueOf")
   (check-expr (ILRef (ILBinaryOp '+ '(a b)) 'valueOf)
               "(a+b).valueOf")
   (check-expr (ILRef (ILObject '()) 'valueOf)
               "({}).valueOf")
-  (check-expr (ILRef (ILNew (ILApp 'String (list (ILValue "Hello!")))) 'valueOf)
+  (check-expr (ILRef (ILNew (ILApp 'String (list (ILString "Hello!")))) 'valueOf)
               (format "(new String(\"Hello!\")).valueOf"))
 
   ;; Objects
 
-  (check-expr (ILObject (list (cons 'name (ILValue "Vishesh"))
-                              (cons 'location (ILValue "Boston"))))
+  (check-expr (ILObject (list (cons 'name (ILString "Vishesh"))
+                              (cons 'location (ILString "Boston"))))
               "{'name':\"Vishesh\",'location':\"Boston\"}")
 
-  (check-expr (ILObject (list (cons 'full-name (ILValue "Vishesh"))
-                              (cons 'location (ILValue "Boston"))))
+  (check-expr (ILObject (list (cons 'full-name (ILString "Vishesh"))
+                              (cons 'location (ILString "Boston"))))
               "{'full-name':\"Vishesh\",'location':\"Boston\"}")
 
   ;; Arrays
 
-  (check-expr (ILArray (list (ILValue 1) (ILValue "1") (ILObject '())))
+  (check-expr (ILArray (list (ILNumber 1.0) (ILString "1") (ILObject '())))
               (format "[1,\"1\",{}]"))
 
   ;; Instanceof
-  (check-expr (ILInstanceOf (ILValue 1) (ILValue 2))
+  (check-expr (ILInstanceOf (ILNumber 1.0) (ILNumber 2.0))
               "(1) instanceof (2)")
 
   ;;; Statements --------------------------------------------------------------
 
   ;; declaration
-  (check-stm (ILVarDec 'sum (ILBinaryOp '+ (list (ILValue 2) (ILValue 4))))
+  (check-stm (ILVarDec 'sum (ILBinaryOp '+ (list (ILNumber 2.0) (ILNumber 4.0))))
              "var sum = 2+4;")
   (check-stm (ILVarDec 'sum (ILLambda '(a b) (list (ILReturn (ILBinaryOp '+ '(a b))))))
              "var sum = function(a, b) {return a+b;};")
   (check-stm (ILAssign 'sum (ILBinaryOp '+ '(a b))) "sum = a+b;")
-  (check-stm (ILIf (ILBinaryOp '< '(a b)) (list (ILValue #t)) (list (ILValue #f)))
+  (check-stm (ILIf (ILBinaryOp '< '(a b)) (list (ILBool #t)) (list (ILBool #f)))
              "if (a<b) {true;} else {false;}")
 
   (check-stm (ILIf* (list
-                     (ILIfClause (ILValue 1) (list 't-branch-1))
-                     (ILIfClause (ILValue 2) (list 't-branch-2))
-                     (ILIfClause (ILValue 3) (list 't-branch-3))
+                     (ILIfClause (ILNumber 1.0) (list 't-branch-1))
+                     (ILIfClause (ILNumber 2.0) (list 't-branch-2))
+                     (ILIfClause (ILNumber 3.0) (list 't-branch-3))
                      (ILIfClause #f (list 'done))))
              "if (1) {t_branch_1;} else if (2) {t_branch_2;} else if (3) {t_branch_3;} else {done;}")
   (check-stm (ILIf* (list
-                     (ILIfClause (ILValue 1) (list 't-branch-1))))
+                     (ILIfClause (ILNumber 1.0) (list 't-branch-1))))
              "if (1) {t_branch_1;}")
 
   ;; Exceptions
 
-  (check-stm (ILThrow (ILValue 1))
+  (check-stm (ILThrow (ILNumber 1.0))
              "throw 1;")
 
   (check-stm (ILThrow (ILNew 'Error))
              "throw new Error;")
 
-  (check-stm (ILExnHandler (list (ILApp 'add (list (ILValue 1) (ILValue 2))))
+  (check-stm (ILExnHandler (list (ILApp 'add (list (ILNumber 1.0) (ILNumber 2.0))))
                            'error
                            '()
                            (list (ILApp 'done '())))
              "try {add(1,2);} finally {done();}")
 
-  (check-stm (ILExnHandler (list (ILApp 'add (list (ILValue 1) (ILValue 2))))
+  (check-stm (ILExnHandler (list (ILApp 'add (list (ILNumber 1.0) (ILNumber 2.0))))
                            'error
                            (list (ILApp 'done '(error)))
                            '())
              "try {add(1,2);} catch (error) {done(error);}")
 
-  (check-stm (ILExnHandler (list (ILApp 'add (list (ILValue 1) (ILValue 2))))
+  (check-stm (ILExnHandler (list (ILApp 'add (list (ILNumber 1.0) (ILNumber 2.0))))
                            'error
                            (list (ILApp 'done '(error)))
                            (list (ILApp 'done '())))

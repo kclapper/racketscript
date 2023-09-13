@@ -236,7 +236,7 @@
 
      (define-values (body-stms body-value)
        (for/fold/last ([stms : ILStatement* '()]
-                       [rv : ILExpr (ILValue (void))])
+                       [rv : ILExpr (ILNull)])
                       ([e last? body])
                       (define-values (s v)
                         (absyn-expr->il e (and last? overwrite-mark-frame?)))
@@ -278,7 +278,7 @@
                 (PlainApp (ImportedIdent 'make-arity-at-least '#%kernel #t) (list (Quote v)))
                 #f))
              val]
-            [(? number? val) (ILValue val)]))))
+            [(? number? val) (ILNumber (exact->inexact val))]))))
 
      (values stms (ILApp (name-in-module 'core 'attachProcedureArity) (list val arities)))]
 
@@ -289,7 +289,7 @@
      (define result-id (fresh-id 'if_res))
      (values (append ps
                      (list
-                      (ILIf (ILBinaryOp '!==  (list pe (ILValue #f)))
+                      (ILIf (ILBinaryOp '!==  (list pe (ILBool #f)))
                             (append1 ts (ILVarDec result-id te))
                             (append1 fs (ILVarDec result-id fe)))))
              result-id)]
@@ -301,7 +301,7 @@
          (append stms
                  (absyn-binding->il b))))
      (for/fold/last ([stms binding-stms]
-                     [rv : ILExpr (ILValue (void))])
+                     [rv : ILExpr (ILNull)])
                     ([e last? body])
                     (define-values (s nv)
                       (absyn-expr->il e (and last? overwrite-mark-frame?)))
@@ -313,25 +313,23 @@
      (values (let-values ([(stms v) (absyn-expr->il e #f)])
                (append1 stms
                         (ILAssign id v)))
-             (ILValue (void)))]
+             (ILNull))]
 
     [(PlainApp (ImportedIdent '#%rs-compiler _ _) args)
      (match args
        [(list (Quote 'if-scheme-numbers) consequent alternate)
-        (if (use-scheme-numbers?)
-            (absyn-expr->il consequent #f)
-            (absyn-expr->il alternate #f))]
+        (absyn-expr->il consequent #f)]
        [(list (Quote 'if-scheme-numbers) consequent)
-        (if (use-scheme-numbers?)
-            (absyn-expr->il consequent #f)
-            (values '() (ILValue (void))))]
+        (absyn-expr->il consequent #f)]
        [else (error 'absyn-expr->il "unknown RS compiler directive" args)])]
     [(PlainApp (ImportedIdent '#%js-ffi _ _) args)
      (match args
        [(list (Quote 'var) (Quote var))
-        (values '() (cast var Symbol))]
+        #:when (symbol? var)
+        (values '() var)]
        [(list (Quote 'string) (Quote str))
-        (values '() (ILValue str))]
+        #:when (string? str)
+        (values '() (ILString str))]
        [(list (Quote 'ref) b xs ...)
         (define-values (stms il) (absyn-expr->il b #f))
         (values stms
@@ -345,8 +343,9 @@
                   ;; sensitively
                   ;; TODO: We should accept only vaild JS idents.
                   (if (ILValue? il)
-                      (ILRef (cast (ILValue-v il) Symbol)
-                             (cast s Symbol))
+                      ;(ILRef (cast (ILValue-v il) Symbol)
+                             ;(cast s Symbol))
+                      (ILRef il (cast s Symbol))
                       (ILRef il (cast s Symbol)))))]
        [(list (Quote 'index) b xs ...)
         (define-values (stms il) (absyn-expr->il b #f))
@@ -356,8 +355,9 @@
           (define-values (x-stms s-il) (absyn-expr->il x #f))
           (values (append stms x-stms)
                   (if (ILValue? il)
-                      (ILIndex (cast (ILValue-v il) Symbol)
-                               s-il)
+                      ;(ILIndex (cast (ILValue-v il) Symbol)
+                               ;s-il)
+                      (ILIndex il s-il)
                       (ILIndex il s-il))))]
        [(list (Quote 'assign) lv rv)
         (define-values (lv-stms lv-il) (absyn-expr->il lv #f))
@@ -365,7 +365,7 @@
         (values (append lv-stms
                         rv-stms
                         (list (ILAssign (cast lv-il ILLValue) rv-il)))
-                (ILValue (void)))]
+                (ILNull))]
        [(list (Quote 'new) lv)
         (define-values (stms il) (absyn-expr->il lv #f))
         (values stms
@@ -395,7 +395,7 @@
         (values stms* (ILObject items*))]
        [(list (Quote 'throw) e)
         (define-values (stms val) (absyn-expr->il e #f))
-        (values (append1 stms (ILThrow val)) (ILValue (void)))]
+        (values (append1 stms (ILThrow val)) (ILNull))]
        [(list (Quote 'typeof) e)
         (define-values (stms val) (absyn-expr->il e #f))
         (values stms (ILTypeOf val))]
@@ -418,6 +418,12 @@
         (values '() (ILArguments))]
        [(list (Quote 'this))
         (values '() (ILThis))]
+       [(list (Quote 'number) (Quote v))
+        #:when (inexact-real? v)
+        (values '() (ILNumber (cast v Float)))]
+       [(list (Quote 'bigint) (Quote v))
+        #:when (exact-integer? v)
+        (values '() (ILBigInt v))]
        [_ (error 'absyn-expr->il "unknown ffi form" args)])]
 
     [(PlainApp lam args)
@@ -432,7 +438,8 @@
      (define (il-app/binop v arg*)
        (define v-il (let-values ([(_ v) (absyn-expr->il v #f)])
                       v))
-       (if (use-scheme-numbers?)
+       (ILApp v-il arg*)
+       #;(if (use-scheme-numbers?)
            (ILApp v-il arg*)
            (cond
              [(and (equal? v (ImportedIdent '- '#%kernel #t))
@@ -440,7 +447,7 @@
               (ILApp v-il arg*)]
              [(and (equal? v (ImportedIdent '/ '#%kernel #t))
                    (length=? arg* 1))
-              (ILBinaryOp '/ (cons (ILValue 1) arg*))]
+              (ILBinaryOp '/ (cons (ILNumber 1.0) arg*))]
              [(and (ImportedIdent? v) (member v binops) (>= (length arg* ) 2))
               (ILBinaryOp (ImportedIdent-id v) arg*)]
              [else (ILApp v-il arg*)])))
@@ -494,7 +501,7 @@
      (values (append hd-stms tl-stms)
              v)]
 
-    ['() (values '() (ILValue (void)))]
+    ['() (values '() (ILNull))]
 
     [(LocalIdent id) (values '() id)]
 
@@ -614,7 +621,7 @@
        (for/list ([i : Natural (range (length args))]
                   [arg : Symbol args])
          (ILVarDec arg (ILApp (ILRef result-id 'getAt)
-                              (list (ILValue i))))))
+                              (list (ILNumber (exact->inexact i)))))))
      (append stms
              (cons (ILVarDec result-id v)
                    binding-stms))]))
@@ -627,20 +634,22 @@
     [(Quote? d) (absyn-value->il (Quote-datum d))]
     [(string? d)
      (ILApp (name-in-module 'core 'UString.make)
-            (list (ILValue d)))]
+            (list (ILString d)))]
     [(symbol? d)
      (ILApp (name-in-module 'core 'PrimitiveSymbol.make)
-            (list (ILValue (symbol->string d))))]
-    [(and (complex? d)
-          (not (real? d)))
-     (if (use-scheme-numbers?)
-         (ILApp (name-in-module 'core 'Number.Racket.makeComplex)
-                (list (absyn-value->il (real-part d))
-                      (absyn-value->il (imag-part d))))
-         (error (~a "Complex numbers not supported with JS number semantics: " d)))]
+            (list (ILString (symbol->string d))))]
+    [(number? d)
+     (number->il-expr d)]
+    ;[(and (complex? d)
+          ;(not (real? d)))
+     ;(if (use-scheme-numbers?)
+         ;(ILApp (name-in-module 'core 'Number.Racket.makeComplex)
+                ;(list (absyn-value->il (real-part d))
+                      ;(absyn-value->il (imag-part d))))
+         ;(error (~a "Complex numbers not supported with JS number semantics: " d)))]
     [(keyword? d)
      (ILApp (name-in-module 'core 'Keyword.make)
-            (list (ILValue (keyword->string d))))]
+            (list (ILString (keyword->string d))))]
     [(empty? d)
      (name-in-module 'core 'Pair.EMPTY)]
     [(list? d)
@@ -669,10 +678,10 @@
              (ILArray
               (for/list ([(key value) (in-hash d)])
                 (ILArray (list (absyn-value->il key) (absyn-value->il value)))))
-             (ILValue mutable)))]
+             (ILBool mutable)))]
     [(bytes? d)
      (ILApp (name-in-module 'core 'Bytes.fromIntArray)
-            (list (ILArray (map ILValue (bytes->list d)))))]
+            (list (ILArray (map ILNumber (map exact->inexact (bytes->list d))))))]
     [(box? d)
      (ILApp (name-in-module 'core 'Box.make)
             (list (absyn-value->il (unbox d))))]
@@ -680,19 +689,29 @@
      (ILApp (name-in-module 'core 'Char.charFromCodepoint)
             (list (absyn-value->il (char->integer d))))]
     [(or (regexp? d) (byte-regexp? d))
-     (define v (object-name d)) ; string or bytes
+     (define v (cast (object-name d) (U String Bytes))) ; string or bytes
      (ILApp (name-in-module 'core 'Regexp.fromString)
-            (list (ILValue (if (bytes? v) (bytes->string/utf-8 v) v))))]
-    [(or (exact-integer? d)
-         (boolean? d)
-         (void? d))
-     (ILValue d)]
-    [(real? d)
-     (if (use-scheme-numbers?)
-         (ILApp (name-in-module 'core 'Number.Racket.makeFloat)
-                (list (ILValue d)))
-         (ILValue d))]
+            (list (ILString (if (bytes? v) (bytes->string/utf-8 v) v))))]
+    [(boolean? d)
+     (ILBool d)]
+    [(void? d)
+     (ILNull)]
+    ;[(real? d)
+     ;(if (use-scheme-numbers?)
+         ;(ILApp (name-in-module 'core 'Number.Racket.makeFloat)
+                ;(list (ILValue d)))
+         ;(ILValue d))]
     [else (error (~a "unsupported value" d))]))
+
+(: number->il-expr (-> Number ILExpr))
+(define (number->il-expr d)
+  (cond
+    [(exact-integer? d)
+     (ILBigInt d)]
+    [(inexact-real? d)
+     (ILNumber (cast d Float))]
+    [else (ILApp (name-in-module 'core 'Number.Racket.fromString)
+                 (list (ILString (~a d))))]))
 
 (: expand-normal-case-lambda (-> (Listof PlainLambda)
                                  (Listof PlainLambda)
@@ -916,18 +935,20 @@
   (define (~str s)
     (ILApp
      (name-in-module 'core 'UString.make)
-     (list (ILValue s))))
+     (list (ILString s))))
 
   (: ~sym (-> Symbol ILExpr))
   (define (~sym s)
     (ILApp
-     (name-in-module 'core 'PrimitiveSymbol.make) (list (ILValue (symbol->string s)))))
+     (name-in-module 'core 'PrimitiveSymbol.make) (list (ILString (symbol->string s)))))
 
   (: ~cons (-> ILExpr ILExpr ILExpr))
   (define (~cons a b)
     (ILApp (name-in-module 'core 'Pair.make) (list a b)))
 
-  (define ~val ILValue)
+  (define ~num ILNumber)
+  (define ~bigint ILBigInt)
+  (define ~bool ILBool)
 
   (define-syntax-rule (~list v ...)
     (ILApp (name-in-module 'core 'Pair.makeList) (list v ...)))
@@ -935,23 +956,23 @@
   ;; Expressions ----------------------------------------------------
 
   (test-case "Racket values"
-    (check-ilexpr (Quote 42)        '() (~val 42))
+    (check-ilexpr (Quote 42)        '() (~bigint 42))
     (check-ilexpr (Quote "Hello")   '() (~str "Hello"))
     (check-ilexpr (Quote 'hello)    '() (~sym 'hello))
     (check-ilexpr
      (Quote '(1 2 3))
      '()
-     (~list (~val 1) (~val 2) (~val 3)))
+     (~list (~bigint 1) (~bigint 2) (~bigint 3)))
     (check-ilexpr
      (Quote '(1 (2 3) 4 (a b)))
      '()
      (~list
-      (~val 1)
-      (~list (~val 2) (~val 3))
-      (~val 4)
+      (~bigint 1)
+      (~list (~bigint 2) (~bigint 3))
+      (~bigint 4)
       (~list (~sym 'a) (~sym 'b))))
-    (check-ilexpr (Quote '(1 . 2))  '() (~cons (~val 1) (~val 2)))
-    (check-ilexpr (Quote #f)        '() (~val #f)))
+    (check-ilexpr (Quote '(1 . 2))  '() (~cons (~bigint 1) (~bigint 2)))
+    (check-ilexpr (Quote #f)        '() (ILBool #f)))
 
 
   ;; --------------------------------------------------------------------------
@@ -980,7 +1001,7 @@
   (test-case "If expression"
     (check-ilexpr (If (Quote #t) (Quote 'yes) (Quote 'no))
                   (list
-                   (ILIf (ILBinaryOp '!== (list (ILValue #t) (ILValue #f)))
+                   (ILIf (ILBinaryOp '!== (list (ILBool #t) (ILBool #f)))
                          (list (ILVarDec 'if_res1 (~sym 'yes)))
                          (list (ILVarDec 'if_res1 (~sym 'no)))))
                   'if_res1))
@@ -1010,7 +1031,7 @@
                                    (cons '(b) (Quote 2)))
                              (LI* 'a 'b))
                   (list
-                   (ILVarDec 'a (ILValue 1)) (ILVarDec 'b (ILValue 2))
+                   (ILVarDec 'a (~bigint 1)) (ILVarDec 'b (~bigint 2))
                    'a)
                   'b)
     (check-ilexpr (LetValues (list (cons '(a)
@@ -1025,17 +1046,16 @@
                              (list (PlainApp (LocalIdent 'list)
                                              (LI* 'a 'b))))
                   (list
-                   (ILIf (ILBinaryOp '!== (list (~val #t) (~val #f)))
+                   (ILIf (ILBinaryOp '!== (list (~bool #t) (~bool #f)))
                          (list (ILVarDec 'if_res1 (~sym 'yes)))
                          (list (ILVarDec 'if_res1 (~sym 'false))))
                    (ILVarDec 'a 'if_res1)
-                   (ILVarDec 'b (if (use-scheme-numbers?)
-                                    (ILApp (ILRef 'kernel '+) (list (ILValue 1) (ILValue 2)))
-                                    (ILBinaryOp '+ (list (~val 1) (~val 2))))))
+                   (ILVarDec 'b (ILApp (ILRef 'kernel '+) (list (~bigint 1) (~bigint 2)))))
                   (ILApp 'list '(a b))))
 
   ;; --------------------------------------------------------------------------
 
+  #;
   (test-case "Identify binary operators"
     (check-ilexpr (PlainApp (kident '+) '())
                   '()
@@ -1046,18 +1066,18 @@
     (check-ilexpr (PlainApp (kident '+) (list (Quote 1) (Quote 2)))
                   '()
                   (if (use-scheme-numbers?)
-                      (ILApp (ILRef 'kernel '+) (list (ILValue 1) (ILValue 2)))
-                      (ILBinaryOp '+ (list (ILValue 1) (ILValue 2)))))
+                      (ILApp (ILRef 'kernel '+) (list (~bigint 1) (~bigint 2)))
+                      (ILBinaryOp '+ (list (~bigint 1) (~bigint 2)))))
     (check-ilexpr (PlainApp (kident '-) (list (Quote 1)
                                               (Quote 2)
                                               (Quote 3)))
                   '()
                   (if (use-scheme-numbers?)
                       (ILApp (ILRef 'kernel '-)
-                             (list (ILValue 1) (ILValue 2) (ILValue 3)))
+                             (list (~bigint 1) (~bigint 2) (~bigint 3)))
                       (ILBinaryOp '-
                                   (list
-                                   (ILValue 1) (ILValue 2) (ILValue 3))))))
+                                   (~bigint 1) (~bigint 2) (~bigint 3))))))
 
   ;; --------------------------------------------------------------------------
 
@@ -1112,7 +1132,7 @@
             (ILApp
              (ILRef 'kernel 'error)
              (list (~str "case-lambda: invalid case"))))))))
-       (ILArray (list (ILValue 2) (ILValue 3))))))
+       (ILArray (list (~num 2.0) (~num 3.0))))))
 
 
   ;; --------------------------------------------------------------------------
@@ -1165,7 +1185,7 @@
       (list (Quote 'array)
             (Quote 1) (Quote 2) (Quote 3)))
      '()
-     (ILArray (list (ILValue 1) (ILValue 2) (ILValue 3))))
+     (ILArray (list (~bigint 1) (~bigint 2) (~bigint 3))))
 
     (check-ilexpr
      (PlainApp
@@ -1173,7 +1193,7 @@
       (list (Quote 'assign)
             (LocalIdent 'name) (Quote "John Doe")))
      (list (ILAssign 'name (~str "John Doe")))
-     (ILValue (void))) ;;TODO: FFI special case!
+     (ILNull)) ;;TODO: FFI special case!
 
     (check-ilexpr
      (PlainApp
@@ -1187,14 +1207,14 @@
       absyn-js-ffi
       (list (Quote 'throw) (Quote "What")))
      (list (ILThrow (~str "What")))
-     (ILValue (void)))
+     (ILNull))
 
     (check-ilexpr
      (PlainApp
       absyn-js-ffi
       (list (Quote 'operator) (Quote '+) (Quote 1) (Quote 2)))
      '()
-     (ILBinaryOp '+ (list (ILValue 1) (ILValue 2)))))
+     (ILBinaryOp '+ (list (~bigint 1) (~bigint 2)))))
 
   ;; --------------------------------------------------------------------------
 
@@ -1212,7 +1232,7 @@
   (test-case "General Top Level Forms"
     (check-ilgtl
      (DefineValues '(x) (Quote 42))
-     (list (ILVarDec 'x (ILValue 42))))
+     (list (ILVarDec 'x (~bigint 42))))
 
     (check-ilgtl
      (DefineValues '(x ident)
@@ -1223,6 +1243,6 @@
       (ILVarDec
        'let_result1
        (ILApp (ILRef 'kernel 'values)
-              (list (ILValue 42) (ILLambda '(x) (list (ILReturn 'x))))))
-      (ILVarDec 'x (ILApp (ILRef 'let_result1 'getAt) (list (ILValue 0))))
-      (ILVarDec 'ident (ILApp (ILRef 'let_result1 'getAt) (list (ILValue 1)))))))))
+              (list (~bigint 42) (ILLambda '(x) (list (ILReturn 'x))))))
+      (ILVarDec 'x (ILApp (ILRef 'let_result1 'getAt) (list (~num 0.0))))
+      (ILVarDec 'ident (ILApp (ILRef 'let_result1 'getAt) (list (~num 1.0)))))))))

@@ -3,7 +3,8 @@
 (require (for-syntax racket/base
                      racket/format
                      racket/list
-                     syntax/parse)
+                     syntax/parse
+                     racketscript/interop)
          racket/stxparam
          racketscript/interop)
 
@@ -147,7 +148,7 @@
            [(_ (a0:id ...) body ...+)
             #`(#%plain-lambda (a0 ...)
                 #,(unless unchecked?
-                    #`(when (binop !== #js.arguments.length #,(length (syntax-e #'(a0 ...))))
+                    #`(when (binop !== #js.arguments.length ($/num #,(length (syntax-e #'(a0 ...)))))
                         (throw (#js.Core.racketContractError "arity mismatch"))))
                 body ...)]
            [(_ (a0:id ...+ . as:id) body ...+)
@@ -156,7 +157,7 @@
                 #,(unless unchecked?
                     #`(when (binop < #js.arguments.length #,fixed-args)
                         (throw (#js.Core.racketContractError "arity mismatch"))))
-                (define as (#js.Array.prototype.slice.call arguments #,fixed-args))
+                (define as (#js.Array.prototype.slice.call arguments ($/num #,fixed-args)))
                 body ...)]))))
 
 (begin-for-syntax

@@ -21,6 +21,8 @@
   ;;   + 'string
   ;;   + 'arguments
   ;;   + 'operator
+  ;;   + 'number
+  ;;   + 'bigint
   (define-values (#%js-ffi)
     (lambda _
       (#%app error 'racketscript "can't make JS ffi calls in Racket"))))

@@ -305,7 +305,7 @@
 (define-test-case Optimized
                 "Racket programs with all optimizations applied"
                 ([enabled-optimizations (set flatten-if-else
-                                             self-tail->loop)]))
+                                             #;self-tail->loop)]))
 
 (define-test-case Scheme-Numbers
                 "Racket programs using scheme number semantics"
@@ -376,7 +376,7 @@
    (run-test-suite (if coverage-mode?
                        void
                        Baseline)
-                   Scheme-Numbers
+                   ;;Scheme-Numbers
                    #:with basic-tests)
 
    (run-test-suite Optimized

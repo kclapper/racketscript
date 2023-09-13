@@ -20,6 +20,8 @@
          $/arguments
          $/binop
          $/+
+         $/num
+         $/bigint
          $/str
          $/this
          =>$
@@ -73,6 +75,10 @@
 
 (define-syntax ($ stx)
   (syntax-parse stx
+    [(_ v:exact-integer)
+     #'(#%js-ffi 'bigint v)]
+    [(_ v:number)
+     #'(#%js-ffi 'number v)]
     [(_ v:jsident) #'(-$ v)]
     [(_ b:expr xs:symbol) #'(-$ b xs)]
     [(_ b:expr xs:expr) #'(-$ b xs)]
@@ -88,6 +94,18 @@
      #:with (id0 id1 ...) (split-id #'v)
      #:with f-id (datum->syntax stx (syntax-e #'id0))
      #`(($ f-id 'id1 ...) e0 ...)]))
+
+(define-syntax ($/num stx)
+  (syntax-parse stx
+    [(_ v:exact-integer)
+     #`($ #,(exact->inexact (syntax-e #'v)))]
+    [(_ v:number)
+     #'($ v)]))
+
+(define-syntax ($/bigint stx)
+  (syntax-parse stx
+    [(_ v:exact-integer)
+     #'($ v)]))
 
 (define-syntax ($/new stx)
   (syntax-parse stx
@@ -404,6 +422,15 @@
 
   (check-interop #'($ window 'document "write")
                  #'(#%js-ffi 'index (#%js-ffi 'ref window 'document) "write"))
+
+  (check-interop #'($ 5)
+                 #'(#%js-ffi 'bigint 5))
+  (check-interop #'($ 5.0)
+                 #'(#%js-ffi 'number 5.0))
+  (check-interop #'($ -5)
+                 #'(#%js-ffi 'bigint -5))
+  (check-interop #'($ -5.0)
+                 #'(#%js-ffi 'number -5.0))
 
   ;; Check `$$`
   (check-interop #'($$ 'window.document write)

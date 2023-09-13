@@ -194,7 +194,7 @@
             (apply op (cdr nums)))])))
 
 (define+provide <
-  (if-scheme-numbers (#js.Core.attachProcedureArity (make-js-comparison < #js.Core.Number.Racket.lessThan) 1)
+  (if-scheme-numbers (#js.Core.attachProcedureArity (make-js-comparison < #js.Core.Number.Racket.lessThan) 1.0)
                      (#js.Core.attachProcedureArity #js.Core.Number.JS.lt 1)))
 (define+provide >
   (if-scheme-numbers (#js.Core.attachProcedureArity (make-js-comparison > #js.Core.Number.Racket.greaterThan) 1)
@@ -736,9 +736,9 @@
     (check/raise procedure? lam 0)
     (define final-args
       (cond
-        [(zero? #js.args.length)
+        [(binop === #js.args.length ($/num 0))
          (throw (#js.Core.racketContractError "arity mismatch"))]
-        [(equal? #js.args.length 1)
+        [(binop === #js.args.length ($/num 1))
          (unless (null? ($ args 0))
            (type-check/raise #js.Core.Pair ($ args 0)))
          (#js.Core.Pair.listToArray ($ args 0))]
@@ -769,7 +769,7 @@
 (define+provide foldl
   (v-λ (fn init . lists)
     (check/raise procedure? fn 0)
-    (when (<= #js.lists.length 0)
+    (when (binop <= #js.lists.length ($/num 0))
       (error 'foldl "need at-least two arguments"))
     (define lst-len (length ($ lists 0)))
     (for/array [v lists 1]
@@ -777,7 +777,7 @@
         (error 'foldl "all input lists must have equal length")))
 
     (define result init)
-    (define args (Array (binop + #js.lists.length 1)))
+    (define args (Array (binop + #js.lists.length ($/num 1))))
     (loop+ [result-i lst-len]
       (for/array [(lst-j lst) lists]
         (:= ($ args lst-j) #js.lst.hd)
